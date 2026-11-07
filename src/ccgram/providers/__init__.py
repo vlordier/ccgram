@@ -37,6 +37,7 @@ _YOLO_FLAGS: dict[str, str] = {
     "claude": "--dangerously-skip-permissions",
     "codex": "--dangerously-bypass-approvals-and-sandbox",
     "gemini": "--yolo",
+    "qwen": "--yolo",
 }
 
 
@@ -128,6 +129,8 @@ def _ensure_registered() -> None:
     # Lazy: provider classes register against the registry at import; defer until the registry factory runs
     from ccgram.providers.pi import PiProvider
 
+    from ccgram.providers.qwen import QwenProvider
+
     # Lazy: provider classes register against the registry at import; defer until the registry factory runs
     from ccgram.providers.shell import ShellProvider
 
@@ -136,6 +139,7 @@ def _ensure_registered() -> None:
     registry.register("codex", CodexProvider)
     registry.register("gemini", GeminiProvider)
     registry.register("pi", PiProvider)
+    registry.register("qwen", QwenProvider)
     registry.register("shell", ShellProvider)
     _registered = True
 
@@ -249,7 +253,7 @@ def detect_provider_from_command(pane_current_command: str) -> str:
     # Match basename only (first token) to avoid false positives
     # from paths like /home/claude/bin/vim
     basename = os.path.basename(cmd.split()[0])
-    for name in ("antigravity", "claude", "codex", "gemini", "pi"):
+    for name in ("antigravity", "claude", "codex", "gemini", "pi", "qwen"):
         if (
             basename == name
             or (name == "antigravity" and basename == "agy")
@@ -272,7 +276,7 @@ def detect_provider_from_command(pane_current_command: str) -> str:
 _CLAUDE_PROJECTS_RE = re.compile(r"/\.claude[a-z0-9._-]*/projects/")
 
 
-def detect_provider_from_transcript_path(transcript_path: str) -> str:
+def detect_provider_from_transcript_path(transcript_path: str) -> str:  # noqa: PLR0911
     """Infer provider name from a persisted transcript path when possible.
 
     Claude wrappers (`ce`, `cc-mirror`, `zai`, `claude-team`, etc.) use sibling
@@ -302,6 +306,8 @@ def detect_provider_from_transcript_path(transcript_path: str) -> str:
         return "gemini"
     if "/.pi/agent/sessions/" in normalized:
         return "pi"
+    if "/.qwen/projects/" in normalized and "/chats/" in normalized:
+        return "qwen"
     return ""
 
 

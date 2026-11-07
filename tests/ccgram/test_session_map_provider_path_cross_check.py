@@ -158,6 +158,7 @@ def test_repeated_sync_with_stale_claim_is_idempotent_and_silent(
         ("/Users/x/.codex/sessions/repo/abc.jsonl", "codex"),
         ("/Users/x/.gemini/chats/repo/abc.json", "gemini"),
         ("/Users/x/.pi/agent/sessions/--repo--/abc.jsonl", "pi"),
+        ("/Users/x/.qwen/projects/-Users-x-repo/chats/abc.jsonl", "qwen"),
         ("/Users/x/weird/abc.jsonl", ""),
     ],
 )

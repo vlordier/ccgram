@@ -30,6 +30,7 @@ DEFAULT_ENABLED_PROVIDERS: tuple[str, ...] = (
     "claude",
     "codex",
     "pi",
+    "qwen",
     "shell",
 )
 

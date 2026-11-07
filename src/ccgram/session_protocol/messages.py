@@ -525,6 +525,81 @@ def _chat(entry: SourceEntry, provider: str) -> TranscriptRecord | None:
     )
 
 
+def _qwen_parts(
+    raw_parts: list[Any],
+) -> tuple[list[dict[str, Any]], list[tuple[str, Any, bool]]]:
+    parts: list[dict[str, Any]] = []
+    results: list[tuple[str, Any, bool]] = []
+    for raw_part in raw_parts:
+        if not isinstance(raw_part, dict):
+            continue
+        text = raw_part.get("text")
+        if isinstance(text, str) and text:
+            parts.append(
+                {
+                    "type": "thinking" if raw_part.get("thought") else "text",
+                    "text": text,
+                }
+            )
+        call = raw_part.get("functionCall") or raw_part.get("function_call")
+        if isinstance(call, dict):
+            parts.append(
+                _tool(
+                    str(call.get("id") or call.get("callId") or ""),
+                    str(call.get("name") or "unknown"),
+                    call.get("args", call.get("arguments", {})),
+                )
+            )
+        response = raw_part.get("functionResponse") or raw_part.get("function_response")
+        if isinstance(response, dict):
+            results.append(
+                (
+                    str(
+                        response.get("id")
+                        or response.get("callId")
+                        or response.get("name")
+                        or ""
+                    ),
+                    response.get("response", response.get("result", response)),
+                    bool(response.get("isError") or response.get("is_error")),
+                )
+            )
+    return parts, results
+
+
+def _qwen(entry: SourceEntry) -> TranscriptRecord | None:
+    """Normalize Qwen Code's ``message.parts`` JSONL records.
+
+    Qwen uses ``role=model`` for assistant output and represents tools as
+    ``functionCall`` / ``functionResponse`` parts rather than OpenAI-style
+    content blocks.
+    """
+    data = entry.data
+    if data.get("type") not in {"user", "assistant", "tool_result"}:
+        return None
+    message = data.get("message")
+    if not isinstance(message, dict):
+        return None
+    raw_role = message.get("role")
+    role = "agent" if raw_role in {"model", "assistant"} else "user"
+    timestamp = data.get("timestamp")
+    raw_parts = message.get("parts")
+    if not isinstance(raw_parts, list):
+        return None
+    parts, results = _qwen_parts(raw_parts)
+    if not parts and not results:
+        return None
+    if data.get("type") == "tool_result" or results and not parts:
+        role = "agent"
+    return TranscriptRecord(
+        str(data.get("uuid") or f"o{entry.offset}"),
+        role,
+        timestamp if isinstance(timestamp, str) else None,
+        tuple(parts),
+        tuple(results),
+    )
+
+
 def _claude(
     entry: SourceEntry, state: TranscriptParserState
 ) -> TranscriptRecord | None:
@@ -808,6 +883,8 @@ def parse_records(
             if provider == "claude"
             else _pi(entry)
             if provider == "pi"
+            else _qwen(entry)
+            if provider == "qwen"
             else None
         )
         if record is None or record.role not in {"user", "agent"}:

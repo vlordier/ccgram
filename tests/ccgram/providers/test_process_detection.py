@@ -36,6 +36,8 @@ class TestClassifyProviderFromArgs:
             ("bun /Users/x/.bun/bin/gemini", "gemini"),
             ("node /path/to/gemini-cli/dist/index.js", "gemini"),
             ("gemini", "gemini"),
+            ("qwen", "qwen"),
+            ("node /path/to/@qwen-code/qwen-code/cli.js", "qwen"),
             ("-fish", "shell"),
             ("-bash", "shell"),
             ("bash ./scripts/restart.sh run", "shell"),
