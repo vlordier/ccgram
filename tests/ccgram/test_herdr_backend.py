@@ -288,7 +288,7 @@ async def test_qwen_finished_pane_remains_auto_adoptable(agent_status: str) -> N
     assert reconciliation[0].topic_eligible is True
 
 
-async def test_sessionless_pi_waits_for_durable_identity() -> None:
+async def test_sessionless_pi_is_adoptable() -> None:
     startup_record = {
         "terminal_id": "term-a",
         "pane_id": "w2:p1",
@@ -297,7 +297,9 @@ async def test_sessionless_pi_waits_for_durable_identity() -> None:
         "agent": "pi",
     }
 
-    assert await _manager(_live_fake(startup_record)).list_windows() == []
+    windows = await _manager(_live_fake(startup_record)).list_windows()
+    assert len(windows) == 1
+    assert windows[0].topic_eligible is True
 
 
 async def test_terminal_derived_target_resolves_to_a_live_session() -> None:
