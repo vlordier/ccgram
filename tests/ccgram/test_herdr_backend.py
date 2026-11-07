@@ -265,11 +265,27 @@ async def test_sessionless_snapshot_uses_terminal_fallback() -> None:
     assert live_window.alias_window_ids == ()
 
 
-async def test_sessionless_qwen_is_adoptable() -> None:
-    """Qwen has no Herdr session composite, so its terminal target is adoptable."""
-    windows = await _manager(_live_fake(_sessionless(agent="qwen"))).list_windows()
+@pytest.mark.parametrize("agent", ["codex", "qwen"])
+async def test_sessionless_primary_agent_is_adoptable(agent: str) -> None:
+    """Sessionless primary Codex/Qwen panes remain accessible via terminal ID."""
+    windows = await _manager(_live_fake(_sessionless(agent=agent))).list_windows()
     assert len(windows) == 1
     assert windows[0].topic_eligible is True
+
+
+@pytest.mark.parametrize("agent_status", ["idle", "done"])
+async def test_qwen_finished_pane_is_live_but_not_auto_adoptable(
+    agent_status: str,
+) -> None:
+    """Existing Qwen panes stay routable without spawning restart topics."""
+    record = _agent(agent="qwen", agent_status=agent_status)
+    manager = _manager(_live_fake(record))
+
+    assert await manager.list_windows() == []
+    reconciliation = await manager.list_windows_for_reconciliation()
+    assert reconciliation is not None
+    assert len(reconciliation) == 1
+    assert reconciliation[0].topic_eligible is False
 
 
 async def test_sessionless_pi_waits_for_durable_identity() -> None:

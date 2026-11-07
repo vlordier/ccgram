@@ -254,6 +254,7 @@ class HerdrLiveRecord:
     tab_id: str
     workspace_id: str
     cwd: str = ""
+    agent_status: str = ""
 
 
 def _session_field(value: object) -> str | None:
@@ -330,9 +331,9 @@ def _parse_live_record(record: Mapping[str, object]) -> HerdrLiveRecord | None:
         # Providers that may remain sessionless still expose a unique terminal
         # identity. Pi is excluded: Herdr publishes its durable session shortly
         # after startup, and creating a terminal topic in that gap would create
-        # a second topic when the durable identity arrives. Qwen currently has
-        # no Herdr agent_session, so the terminal fallback is its only
-        # adoptable identity.
+        # a second topic when the durable identity arrives. Codex and Qwen may
+        # remain sessionless in existing Herdr panes, so their terminal fallback
+        # is the only identity that makes those primary sessions accessible.
         composite = HerdrSessionComposite(
             "herdr", agent, _TERMINAL_FALLBACK_KIND, terminal_id
         )
@@ -341,6 +342,8 @@ def _parse_live_record(record: Mapping[str, object]) -> HerdrLiveRecord | None:
     # whatever the agent currently shells into (a worktree, a plugin cache) and
     # would send hookless transcript discovery to the wrong session directory.
     cwd = _session_field(record.get("cwd")) or ""
+    raw_status = record.get("agent_status")
+    agent_status = raw_status.strip() if isinstance(raw_status, str) else ""
     return HerdrLiveRecord(
         target_id=target_id,
         composite=composite,
@@ -349,6 +352,7 @@ def _parse_live_record(record: Mapping[str, object]) -> HerdrLiveRecord | None:
         tab_id=locators["tab_id"] or "",
         workspace_id=locators["workspace_id"] or "",
         cwd=cwd,
+        agent_status=agent_status,
     )
 
 
@@ -762,7 +766,14 @@ class HerdrManager:
             topic_eligible=adoptable
             and (
                 record.composite.kind != _TERMINAL_FALLBACK_KIND
-                or record.composite.agent == "qwen"
+                or record.composite.agent in {"codex", "qwen"}
+            )
+            # Qwen's internal subagents are not Herdr panes. A completed or
+            # idle top-level Qwen pane may still be bound and addressed, but
+            # it must not be auto-adopted as a new Telegram topic on restart.
+            and not (
+                record.composite.agent == "qwen"
+                and record.agent_status in {"idle", "done"}
             )
             and is_herdr_session_target(record.target_id)
             and bool(record.composite.agent.strip()),
