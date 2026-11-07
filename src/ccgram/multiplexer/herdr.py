@@ -768,13 +768,6 @@ class HerdrManager:
                 record.composite.kind != _TERMINAL_FALLBACK_KIND
                 or record.composite.agent in {"codex", "qwen"}
             )
-            # Qwen's internal subagents are not Herdr panes. A completed or
-            # idle top-level Qwen pane may still be bound and addressed, but
-            # it must not be auto-adopted as a new Telegram topic on restart.
-            and not (
-                record.composite.agent == "qwen"
-                and record.agent_status in {"idle", "done"}
-            )
             and is_herdr_session_target(record.target_id)
             and bool(record.composite.agent.strip()),
         )

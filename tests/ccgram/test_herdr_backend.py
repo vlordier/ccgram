@@ -274,18 +274,18 @@ async def test_sessionless_primary_agent_is_adoptable(agent: str) -> None:
 
 
 @pytest.mark.parametrize("agent_status", ["idle", "done"])
-async def test_qwen_finished_pane_is_live_but_not_auto_adoptable(
-    agent_status: str,
-) -> None:
-    """Existing Qwen panes stay routable without spawning restart topics."""
+async def test_qwen_finished_pane_remains_auto_adoptable(agent_status: str) -> None:
+    """A finished Qwen pane is still a primary session, not a subagent."""
     record = _agent(agent="qwen", agent_status=agent_status)
     manager = _manager(_live_fake(record))
 
-    assert await manager.list_windows() == []
+    windows = await manager.list_windows()
+    assert len(windows) == 1
+    assert windows[0].topic_eligible is True
     reconciliation = await manager.list_windows_for_reconciliation()
     assert reconciliation is not None
     assert len(reconciliation) == 1
-    assert reconciliation[0].topic_eligible is False
+    assert reconciliation[0].topic_eligible is True
 
 
 async def test_sessionless_pi_waits_for_durable_identity() -> None:
