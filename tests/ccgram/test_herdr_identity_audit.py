@@ -34,7 +34,7 @@ def test_record_assembler_uses_guarded_terminal_fallback() -> None:
         source.index("def _parse_live_record") : source.index("class HerdrManager")
     ]
     assert "if composite is None:" in section
-    assert 'agent not in {"claude", "codex", "gemini"}' in section
+    assert 'agent not in {"claude", "codex", "gemini", "qwen"}' in section
     assert "HerdrSessionComposite(" in section
     assert "_TERMINAL_FALLBACK_KIND, terminal_id" in section
 

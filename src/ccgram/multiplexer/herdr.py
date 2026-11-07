@@ -325,12 +325,14 @@ def _parse_live_record(record: Mapping[str, object]) -> HerdrLiveRecord | None:
                 "agent.list contains a malformed sessionless agent"
             )
         terminal_id = locators["terminal_id"]
-        if agent not in {"claude", "codex", "gemini"} or terminal_id is None:
+        if agent not in {"claude", "codex", "gemini", "qwen"} or terminal_id is None:
             return None
         # Providers that may remain sessionless still expose a unique terminal
         # identity. Pi is excluded: Herdr publishes its durable session shortly
         # after startup, and creating a terminal topic in that gap would create
-        # a second topic when the durable identity arrives.
+        # a second topic when the durable identity arrives. Qwen currently has
+        # no Herdr agent_session, so the terminal fallback is its only
+        # adoptable identity.
         composite = HerdrSessionComposite(
             "herdr", agent, _TERMINAL_FALLBACK_KIND, terminal_id
         )
@@ -758,7 +760,10 @@ class HerdrManager:
             cwd=record.cwd,
             pane_current_command=record.composite.agent,
             topic_eligible=adoptable
-            and record.composite.kind != _TERMINAL_FALLBACK_KIND
+            and (
+                record.composite.kind != _TERMINAL_FALLBACK_KIND
+                or record.composite.agent == "qwen"
+            )
             and is_herdr_session_target(record.target_id)
             and bool(record.composite.agent.strip()),
         )

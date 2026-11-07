@@ -130,6 +130,7 @@ class _SnapshotSequence:
 def _sessionless(
     terminal_id: str = "term-a",
     *,
+    agent: str = "claude",
     pane_id: str = "w2:p1",
     tab_id: str = "w2:t1",
     workspace_id: str = "w2",
@@ -139,7 +140,7 @@ def _sessionless(
         "pane_id": pane_id,
         "tab_id": tab_id,
         "workspace_id": workspace_id,
-        "agent": "claude",
+        "agent": agent,
     }
 
 
@@ -262,6 +263,13 @@ async def test_sessionless_snapshot_uses_terminal_fallback() -> None:
     assert live_window.window_id == _target("session-a")
     assert fallback_window.alias_window_ids == ()
     assert live_window.alias_window_ids == ()
+
+
+async def test_sessionless_qwen_is_adoptable() -> None:
+    """Qwen has no Herdr session composite, so its terminal target is adoptable."""
+    windows = await _manager(_live_fake(_sessionless(agent="qwen"))).list_windows()
+    assert len(windows) == 1
+    assert windows[0].topic_eligible is True
 
 
 async def test_sessionless_pi_waits_for_durable_identity() -> None:
