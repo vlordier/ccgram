@@ -85,6 +85,33 @@ class TestStatusMain:
         assert "dead" in captured.out
         assert "gone-project" in captured.out
 
+    def test_chat_scoped_binding_is_reported_as_bound(
+        self, tmp_path, monkeypatch, capsys
+    ) -> None:
+        monkeypatch.setenv("CCGRAM_DIR", str(tmp_path))
+        monkeypatch.setenv("TMUX_SESSION_NAME", "ccgram")
+
+        state = {
+            "chat_thread_bindings": {"12345:-100999:42": "@5"},
+            "window_display_names": {"@5": "group-topic"},
+        }
+        (tmp_path / "state.json").write_text(json.dumps(state))
+        (tmp_path / "session_map.json").write_text(
+            json.dumps({"ccgram:@5": {"session_id": "sid", "cwd": "/tmp"}})
+        )
+        monkeypatch.setattr(
+            "ccgram.status_cmd._list_tmux_windows",
+            lambda _: [{"id": "@5", "name": "group-topic"}],
+        )
+
+        with contextlib.suppress(SystemExit):
+            status_main()
+
+        captured = capsys.readouterr()
+        assert "topic 42" in captured.out
+        assert "chat -100999" in captured.out
+        assert "(unbound)" not in captured.out
+
     def test_unbound_window(self, tmp_path, monkeypatch, capsys) -> None:
         monkeypatch.setenv("CCGRAM_DIR", str(tmp_path))
         monkeypatch.setenv("TMUX_SESSION_NAME", "ccgram")

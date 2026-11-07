@@ -161,6 +161,39 @@ def _backend_line(label: str, windows: list[dict[str, str]] | None, unit: str) -
     return f"{label}: {len(windows)} {unit}"
 
 
+def _build_bound_windows(
+    state: dict,
+) -> dict[str, tuple[int, int, str, int | None]]:
+    """Index legacy and chat-scoped bindings by canonical window ID."""
+    bound_windows: dict[str, tuple[int, int, str, int | None]] = {}
+    for user_id_str, bindings in state.get("thread_bindings", {}).items():
+        for thread_id_str, window_id in bindings.items():
+            bound_windows[canonical_window_id(window_id)] = (
+                int(thread_id_str),
+                int(user_id_str),
+                window_id,
+                None,
+            )
+    # Since chat-scoped Telegram topics were introduced, normal bindings live
+    # in ``chat_thread_bindings`` rather than the legacy ``thread_bindings``
+    # map. A chat-scoped row wins if both formats are present.
+    for key, window_id in state.get("chat_thread_bindings", {}).items():
+        try:
+            user_id_str, chat_id_str, thread_id_str = key.split(":", 2)
+            user_id = int(user_id_str)
+            chat_id = int(chat_id_str)
+            thread_id = int(thread_id_str)
+        except (AttributeError, TypeError, ValueError):
+            continue
+        bound_windows[canonical_window_id(window_id)] = (
+            thread_id,
+            user_id,
+            window_id,
+            chat_id,
+        )
+    return bound_windows
+
+
 def status_main() -> None:
     """Entry point for `ccgram status`."""
     # Honor CCGRAM_* (e.g. CCGRAM_MULTIPLEXER) set only in ~/.ccgram/.env,
@@ -196,17 +229,9 @@ def status_main() -> None:
             else f"Tmux session: {session_name} ({len(live_windows)} windows)"
         )
 
-    # Build binding index: window_id -> (thread_id, user_id)
-    thread_bindings = state.get("thread_bindings", {})
+    # Build binding index: window_id -> (thread_id, user_id, chat_id)
     display_names = state.get("window_display_names", {})
-    bound_windows: dict[str, tuple[int, int, str]] = {}
-    for user_id_str, bindings in thread_bindings.items():
-        for thread_id_str, window_id in bindings.items():
-            bound_windows[canonical_window_id(window_id)] = (
-                int(thread_id_str),
-                int(user_id_str),
-                window_id,
-            )
+    bound_windows = _build_bound_windows(state)
     display_names_by_id = {
         canonical_window_id(wid): name for wid, name in display_names.items()
     }
@@ -235,9 +260,11 @@ def status_main() -> None:
         shown_ids.add(key)
 
         if key in bound_windows:
-            thread_id, user_id, _bound_wid = bound_windows[key]
+            thread_id, user_id, _bound_wid, chat_id = bound_windows[key]
+            chat_suffix = f", chat {chat_id}" if chat_id is not None else ""
             print(
-                f"  {wid:<5} {name:<16} -> topic {thread_id} (user {user_id})   alive"
+                f"  {wid:<5} {name:<16} -> topic {thread_id} "
+                f"(user {user_id}{chat_suffix})   alive"
             )
         else:
             print(f"  {wid:<5} {name:<16}                              (unbound)")
@@ -245,12 +272,13 @@ def status_main() -> None:
     # Bound but not in the live listing. Only a confirmed listing makes that
     # "dead"; an unconfirmed one makes it unknown, and /sync Fix acts on dead.
     verdict = "unknown" if live_windows is None else "dead"
-    for key, (thread_id, user_id, wid) in bound_windows.items():
+    for key, (thread_id, user_id, wid, chat_id) in bound_windows.items():
         if key not in shown_ids:
             name = display_names_by_id.get(key, wid)
+            chat_suffix = f", chat {chat_id}" if chat_id is not None else ""
             print(
                 f"  {wid:<5} {name:<16} -> topic {thread_id} "
-                f"(user {user_id})   {verdict}"
+                f"(user {user_id}{chat_suffix})   {verdict}"
             )
 
     sys.exit(0)
