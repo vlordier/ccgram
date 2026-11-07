@@ -160,6 +160,28 @@ class TestCollectTargetChats:
 
 
 class TestHandleNewWindow:
+    async def test_qwen_window_requires_explicit_bind(self) -> None:
+        event = _make_event(window_id="qwen-window", window_name="Qwen ▸ project")
+        bot = AsyncMock()
+
+        with (
+            patch(
+                "ccgram.handlers.topics.topic_orchestration.thread_router"
+            ) as mock_tr,
+            patch(
+                "ccgram.handlers.topics.topic_orchestration._auto_detect_provider",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "ccgram.handlers.topics.topic_orchestration.window_query.get_window_provider",
+                return_value="qwen",
+            ),
+        ):
+            mock_tr.has_window.return_value = False
+            assert await handle_new_window(event, bot) is False
+
+        bot.create_forum_topic.assert_not_awaited()
+
     async def test_serializes_concurrent_creation_for_same_window(self) -> None:
         active = 0
         max_active = 0

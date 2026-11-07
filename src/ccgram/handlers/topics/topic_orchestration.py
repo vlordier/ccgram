@@ -933,6 +933,18 @@ async def _handle_new_window_locked(
 
     await _auto_detect_provider(event.window_id)
 
+    # Qwen panes are often a pre-existing swarm of independent top-level
+    # sessions. Their internal subagents are transcript-only, and a restart
+    # cannot distinguish an intentionally selected Qwen pane from one merely
+    # left running. Keep Qwen discoverable for explicit /bind, but do not
+    # create Telegram topics for every unbound Qwen pane automatically.
+    if target_user_id is None and window_query.get_window_provider(event.window_id) == "qwen":
+        logger.info(
+            "Skipping automatic Qwen topic adoption; use /bind explicitly",
+            window_id=event.window_id,
+        )
+        return False
+
     topic_name = event.window_name or Path(event.cwd).name or event.window_id
     seen_chats = (
         {target_chat_id}
