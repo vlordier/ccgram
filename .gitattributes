@@ -1,0 +1,53 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Python
+*.py text eol=lf
+*.pyi text eol=lf
+
+# Config and data files
+*.toml text eol=lf
+*.lock text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.jsonl text eol=lf
+*.ini text eol=lf
+*.cfg text eol=lf
+*.env text eol=lf
+*.example text eol=lf
+
+# Documentation
+*.md text eol=lf
+*.rst text eol=lf
+*.txt text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# Git hooks
+*.pre-commit text eol=lf
+
+# License
+LICENSE* text eol=lf
+
+# Markdown lint config
+*.markdownlint* text eol=lf
+
+# Agentic project markers
+AGENTS.md text eol=lf
+CLAUDE.md text eol=lf
+VISION.md text eol=lf
+
+# Architecture docs
+.archfit.yaml text eol=lf
+.archfit-app.yaml text eol=lf
+
+# Binary/compiled
+*.pyc binary
+*.pyo binary
+*.so binary
+*.egg-info/ binary
